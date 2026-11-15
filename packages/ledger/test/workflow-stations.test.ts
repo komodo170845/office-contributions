@@ -10,7 +10,8 @@ import { db } from './pglite.ts';
 process.env.OLLAMA_URL = 'http://127.0.0.1:9';
 const { saveWorkflow, startWorkflow, continueStations, workflowBoard } =
   await import('../src/workflow-stations.ts');
-const { startFollowUp, finishFollowUp } = await import('../src/office-follow-ups.ts');
+const { startFollowUp, finishFollowUp, closeStaleFollowUps } =
+  await import('../src/office-follow-ups.ts');
 const { decideAsk } = await import('../src/office.ts');
 await db.insert(staff).values(
   ['lead', 'maker', 'reviewer'].map((id) => ({
@@ -35,7 +36,20 @@ async function queued(thread: number) {
     .from(followUps)
     .where(and(eq(followUps.threadId, thread), isNull(followUps.startedAt)));
 }
-test('a retry starts one job, and an edited template leaves its station conditions intact', async () => {
+async function passBack(thread: number) {
+  const pending = await queued(thread);
+  assert.equal(pending.length, 1);
+  const pickup = await startFollowUp(pending[0].id);
+  assert.ok(pickup);
+  assert.equal(pickup.kind, 'handed_back');
+  const result = await continueStations(pickup);
+  assert.ok(result);
+  assert.equal(result.outcome, 'done');
+  await continueStations(pickup);
+  await finishFollowUp(pickup, 'Return', result.outcome, result.text);
+  return pickup;
+}
+test('a retried job resumes its queued QA revision on its original route after startup cleanup', async () => {
   const template = await saveWorkflow('Editorial', route);
   const key = randomUUID();
   await Promise.all([
@@ -43,11 +57,11 @@ test('a retry starts one job, and an edited template leaves its station conditio
     startWorkflow(template.id, 'Write', key)
   ]);
   await assert.rejects(startWorkflow(template.id, 'Different job', key));
-  await saveWorkflow(
-    'Edited',
-    [route[0], { ...route[1], doneWhen: 'A different rule.' }],
-    template.id
-  );
+  const edited = [
+    { name: 'Research', odd: 'reviewer', doneWhen: 'A source exists.' },
+    { name: 'Check', odd: 'maker', doneWhen: 'A different rule.' }
+  ];
+  await saveWorkflow('Edited', edited, template.id);
   const { jobs } = await workflowBoard();
   const job = jobs.find((j) => j.workflowId === template.id)!;
   assert.equal(jobs.filter((j) => j.workflowId === template.id).length, 1);
@@ -58,16 +72,39 @@ test('a retry starts one job, and an edited template leaves its station conditio
   const doing = await startFollowUp(first.id);
   assert.ok(doing);
   await finishFollowUp(doing, 'Production', 'done', 'Saved the draft.');
-  const [result] = await queued(job.thread.id);
-  const pickup = await startFollowUp(result.id);
-  assert.ok(pickup);
-  assert.equal((await continueStations(pickup))?.outcome, 'done');
-  await continueStations(pickup);
+  await passBack(job.thread.id);
   const [qa, ...extra] = await queued(job.thread.id);
   assert.equal(extra.length, 0);
   assert.equal(qa.staffId, 'reviewer');
   assert.equal(qa.handOff?.station, 1);
   assert.match(qa.handOff!.brief, /The draft passes/);
+  const review = await startFollowUp(qa.id);
+  assert.ok(review);
+  const reason = 'The draft is missing its source link.\nRevision needed';
+  await finishFollowUp(review, 'QA', 'failed', reason);
+  const [returned] = await queued(job.thread.id);
+
+  await closeStaleFollowUps();
+  await startWorkflow(template.id, 'Write', key);
+  const resumed = await passBack(job.thread.id);
+  assert.equal(resumed.id, returned.id);
+  assert.equal(resumed.handOff?.id, qa.id);
+  assert.equal(resumed.note, reason);
+  const revisions = await queued(job.thread.id);
+  assert.equal(revisions.length, 1);
+  assert.equal(revisions[0].handOff?.station, 0);
+  assert.equal(revisions[0].staffId, 'maker');
+
+  await startWorkflow(template.id, 'Research a source', randomUUID());
+  const current = (await workflowBoard()).jobs.filter((j) => j.workflowId === template.id);
+  assert.equal(current.length, 2);
+  assert.deepEqual(current.find((j) => j.thread.id === job.thread.id)?.stations, route);
+  const fresh = current.find((j) => j.thread.id !== job.thread.id);
+  assert.ok(fresh);
+  assert.deepEqual(fresh.stations, edited);
+  const [research] = await queued(fresh.thread.id);
+  assert.equal(research.staffId, 'reviewer');
+  assert.equal(research.handOff?.title, 'Research');
 });
 
 test('the ordinary usage hold resumes the same first station once', async () => {
