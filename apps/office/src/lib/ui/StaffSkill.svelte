@@ -7,7 +7,7 @@
   let { profile }: { profile: StaffProfile } = $props();
   let readSettings = $state<typeof import('../staff/file-settings.ts').skillSettings>();
   const settings = $derived.by(() => {
-    if (!draft || !readSettings) return undefined;
+    if (!draft || invalid || !readSettings) return undefined;
     try {
       return readSettings(draft);
     } catch {
@@ -17,6 +17,7 @@
   let shown = $state(false);
   let saved = $state<string | null>();
   let draft = $state<string | null>(null);
+  const invalid = $derived(draft ? skillProblem(draft) : undefined);
   let busy = $state(false);
   let problem = $state('');
 
@@ -83,11 +84,13 @@
     {shown ? '▾' : '▸'} Skill
   </button>
   {#if shown}
-    {#if problem}<p role="alert" class="mt-2 text-xs text-coral">{problem}</p>{/if}
+    {#if problem || invalid}<p role="alert" class="mt-2 text-xs text-coral">
+        {problem || invalid}
+      </p>{/if}
     {#if saved !== undefined}
       <p class="my-2 text-xs text-faint">
-        Choose a SKILL.md and review its instructions. This Odd uses the saved copy on its next run.
-        Grant any tools or supporting files it needs in Settings.
+        Choose a SKILL.md or paste the instructions this Odd may use. Edit them before saving. Grant
+        any tools or supporting files it needs in Settings.
       </p>
       <input
         aria-label="Choose SKILL.md"
@@ -108,15 +111,21 @@
       {:else if settings}
         <ImportSettings {settings} granted={profile.tools} />
       {/if}
-      {#if draft}
-        <pre
-          aria-label="Skill instructions"
-          class="my-2 max-h-48 overflow-auto rounded-lg bg-night/60 p-2 text-xs whitespace-pre-wrap">{draft}</pre>
-      {/if}
+      <label class="mt-2 block text-xs" for="skill-{profile.id}">Skill instructions</label>
+      <textarea
+        id="skill-{profile.id}"
+        class="mt-1 w-full rounded-lg bg-night/60 p-2 font-mono text-xs"
+        rows="6"
+        disabled={busy}
+        value={draft ?? ''}
+        oninput={(event) => {
+          draft = event.currentTarget.value || null;
+          problem = '';
+        }}></textarea>
       <div class="mt-2 flex items-center gap-2 text-xs">
         {#if saved !== draft}
           <button
-            disabled={busy}
+            disabled={busy || !!invalid}
             class="rounded-lg bg-sea px-3 py-1 font-medium text-night"
             onclick={save}>{draft ? 'Save skill' : 'Confirm removal'}</button
           >
