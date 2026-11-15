@@ -36,8 +36,13 @@ export const TRACKS: Track[] = [
 /** A new owner's first visit opens on this one. */
 export const OPENING = 'good-morning-neighbor';
 
-// Filtered pink noise for concentration. It plays on its own, outside the song shuffle.
-export const FOCUS = 'focus-noise';
+// These loops play only when the owner chooses one. Shuffle never picks them.
+export const SOUNDS: Track[] = [
+  { id: 'focus-noise', title: 'Focus noise' },
+  { id: 'winter-bells', title: 'Winter bells' }
+];
 
-export const trackSrc = (id: string): string =>
-  id === FOCUS ? '/sounds/focus-noise.m4a' : `/audio/${id}.m4a`;
+export const soundById = (id: string | null | undefined): Track | undefined =>
+  SOUNDS.find((sound) => sound.id === id);
+
+export const trackSrc = (id: string): string => `/${soundById(id) ? 'sounds' : 'audio'}/${id}.m4a`;
