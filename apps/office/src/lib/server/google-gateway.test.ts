@@ -176,3 +176,64 @@ test('revoking the last grant cancels the sign-in at Google and forgets it here'
     await L.pg`select body from ledger where title = 'Revoked Gmail (gail@example.com) for Gail'`;
   assert.match(line.body, /Google cancelled the sign-in too/);
 });
+
+test('a calendar booking at Draft waits for the Desk and a second approval makes no second event', async () => {
+  const id = 'google-calendar';
+  await L.ensureConnector(id);
+  secrets.set(
+    id + ':oauth',
+    JSON.stringify({
+      tokens: { access_token: ACCESS, refresh_token: REFRESH, expires_in: 3600 },
+      savedAt: Date.now()
+    })
+  );
+  const tools = await listTools(id);
+  await L.connectorReady(
+    id,
+    tools.map((t) => t.name),
+    tools.filter((t) => t.readOnly).map((t) => t.name)
+  );
+  await L.pg`insert into staff ${L.pg({ ...odd('kit', 'Kit'), permission: 'draft' })}`;
+  await L.grantAccess('kit', { connector: id, level: 'act' });
+  const connector = (await L.connector(id))!;
+  const { token } = openGateway([{ connector, level: 'act', waits: true }], 60_000, {
+    staffId: 'kit',
+    run: 'calendar-test'
+  });
+  const client = new Client({ name: 'calendar-run', version: '1' });
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL(L.OFFICE_URL + '/api/gateway/' + id), {
+      requestInit: { headers: { Authorization: 'Bearer ' + token } },
+      fetch: (url, init) => gateway(new Request(url, init), id)
+    })
+  );
+  try {
+    google.length = 0;
+    const booking = {
+      calendar_id: 'primary',
+      event_id: 'abc123',
+      title: 'Receiving review',
+      start: '2026-11-18',
+      end: '2026-11-19',
+      oddboro_title: 'Book the receiving review',
+      oddboro_why: 'You asked for a review on November 18.'
+    };
+    await client.callTool({ name: 'create_event', arguments: booking });
+    const writes = () =>
+      google.filter((g) => g.url.includes('/calendar/v3/calendars/primary/events?sendUpdates'));
+    assert.equal(writes().length, 0);
+    const [ask] =
+      await L.pg`select id from asks where staff_id='kit' and kind='call' and status='open'`;
+    assert.ok(ask);
+    const route = await import('../../routes/api/asks/[id]/call/+server.ts');
+    const click = async () =>
+      route.POST({ params: { id: String(ask.id) } } as Parameters<typeof route.POST>[0]);
+    assert.equal((await click()).status, 200);
+    await assert.rejects(click(), /already answered|409/);
+    assert.equal(writes().length, 1);
+    assert.equal(JSON.parse(writes()[0].body!).id, 'abc123');
+  } finally {
+    await client.close();
+    await closeGateway(token);
+  }
+});

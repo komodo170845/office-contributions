@@ -92,3 +92,98 @@ test('get_event reads the selected occurrence and a busy check keeps errors by c
   assert.equal(bad.isError, true);
   assert.equal(sent.length, 2);
 });
+
+test('a retried booking keeps the same event ID and all-day end date', async (t) => {
+  const requests: Request[] = [];
+  t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
+    requests.push(new Request(url, init));
+    return requests.length === 1
+      ? Response.json({ id: 'abc123' })
+      : Response.json({ error: { message: 'Event already exists' } }, { status: 409 });
+  });
+  const booking = {
+    name: 'create_event',
+    arguments: {
+      calendar_id: 'primary',
+      event_id: 'abc123',
+      title: 'Delivery',
+      start: '2026-11-18',
+      end: '2026-11-19',
+      guests: ['receiver@example.com']
+    }
+  };
+  assert.ok(!(await client.callTool(booking)).isError);
+  assert.equal((await client.callTool(booking)).isError, true);
+  for (const req of requests) {
+    assert.equal(req.method, 'POST');
+    assert.equal(new URL(req.url).searchParams.get('sendUpdates'), 'all');
+    assert.deepEqual(await req.json(), {
+      id: 'abc123',
+      summary: 'Delivery',
+      start: { date: '2026-11-18' },
+      end: { date: '2026-11-19' },
+      attendees: [{ email: 'receiver@example.com' }]
+    });
+  }
+});
+
+test('rescheduling changes only the occurrence reviewed and keeps a later edit', async (t) => {
+  const patches: Request[] = [];
+  let series = false;
+  t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
+    const req = new Request(url, init);
+    if (req.method === 'GET')
+      return Response.json(series ? { recurrence: ['RRULE:FREQ=WEEKLY'] } : {});
+    patches.push(req);
+    return patches.length === 1
+      ? Response.json({ id: 'meeting_1', etag: '"2"' })
+      : Response.json({ error: { message: 'Condition not met' } }, { status: 412 });
+  });
+  const move = {
+    name: 'reschedule_event',
+    arguments: {
+      calendar_id: 'primary',
+      event_id: 'meeting_1',
+      etag: '"1"',
+      start: period.time_min,
+      end: period.time_max
+    }
+  };
+  assert.ok(!(await client.callTool(move)).isError);
+  assert.equal(patches[0].headers.get('If-Match'), '"1"');
+  assert.deepEqual(await patches[0].json(), {
+    start: { dateTime: period.time_min },
+    end: { dateTime: period.time_max }
+  });
+  const stale = await client.callTool(move);
+  assert.equal(stale.isError, true);
+  assert.match(JSON.stringify(stale.content), /This event changed/);
+  series = true;
+  assert.equal((await client.callTool(move)).isError, true);
+  assert.equal(patches.length, 2);
+});
+
+test('answering updates only the connected invitee and keeps the other guests', async (t) => {
+  let email = 'reader@example.com';
+  const patches: Request[] = [];
+  t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
+    const req = new Request(url, init);
+    if (req.method === 'GET')
+      return Response.json({ attendees: [{ email: 'guest@example.com' }, { self: true, email }] });
+    patches.push(req);
+    return Response.json({ id: 'delivery' });
+  });
+  const answer = {
+    name: 'answer_invitation',
+    arguments: { calendar_id: 'primary', event_id: 'delivery', etag: '"1"', response: 'tentative' }
+  };
+  assert.ok(!(await client.callTool(answer)).isError);
+  assert.equal(patches[0].headers.get('If-Match'), '"1"');
+  assert.deepEqual(await patches[0].json(), {
+    attendeesOmitted: true,
+    attendees: [{ email: 'reader@example.com', responseStatus: 'tentative' }]
+  });
+  email = 'different@example.com';
+  assert.equal((await client.callTool(answer)).isError, true);
+  assert.equal(patches.length, 1);
+});
