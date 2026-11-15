@@ -38,3 +38,11 @@ For native sessions, use `advanced on --accept-project-access`, then `projects`.
 The packaged service uses the same database upgrade and backup path as the desktop office. The service checks the release manifest, verifies the signed version and download, and waits for the office's update window. It restarts headlessly when an update is ready. An installation that requires administrator access reports the issue in the office log; use the signed platform installer in that case. On Mac and Linux, the service retains the previous installation until the new version answers. Confirm the version with `status`. After an interrupted upgrade, inspect the office log before retrying work.
 
 The Mac log is in `~/Library/Logs/Oddboro/office.log`, the Linux log in `~/.local/state/oddboro/office.log` (or the XDG state directory), and the Windows log in `%LOCALAPPDATA%\Oddboro\Logs\office.log`. To remove the background installation, turn off its login entry, stop the office, and uninstall the app normally. Keep the office home if you want to keep its history.
+
+## Back up or restore the built-in office
+
+Let work finish and stop the office with `oddboro stop`. Stop any older app or source server using the same office folder. Run `oddboro backup "/path/to/private-drive/Friday"` with a new folder name. Use a private drive you control. The command prints the completed copy's `office` folder. It refuses to overwrite a previous copy. You can then start the office again.
+
+The copy includes the built-in database, staff and shared thread files, office notes, local data and saved project sessions. Linked folders, account credentials, environment settings and prior backups need their own backup. Back up an external Postgres database or a remote office on its host.
+
+To restore, stop the office, move its existing home to an unused name, then copy the completed `office` folder to the original location. Start the same version and open a past report, a file and a pending Desk item. Pair the restored office and reconnect any accounts it asks for. Keep the previous home until you have checked the restored work.

@@ -16,6 +16,7 @@ const home = process.env.ODDBORO_HOME || join(homedir(), '.oddboro');
 const help = `oddboro COMMAND [--json]
 
 start | status | stop | login on|off|status | open workspace | open office
+backup NEW_FOLDER   copy a stopped local office
 setup OWNER TIME_ZONE MANAGER [PROVIDER]   managers: status --json
 tools | sign-in PROVIDER | hire NAME ROLE REMIT
 odds | inbox | assign ODD MESSAGE [--turn UUID] | chat ODD | follow ODD
@@ -154,6 +155,13 @@ async function terminal(id) {
 }
 async function run() {
   if (!command || ['help', '--help', '-h'].includes(command)) return out(help);
+  if (command === 'backup') {
+    if (process.env.ODDBORO_BACKUP_LOCKED !== '1')
+      throw Error('Run backup with the installed Oddboro executable.');
+    if (args.length !== 1) throw Error('Provide one new folder on a private drive.');
+    const { backUpOffice } = await import('./office-backup.mjs');
+    return out(backUpOffice(home, args[0]));
+  }
   if (command === 'login') {
     const p = await import('@oddboro/ledger/platform');
     const label = 'com.oddboro.office';

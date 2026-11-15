@@ -71,6 +71,20 @@ fn main() {
     if let Some(command) = std::env::args_os().nth(1) {
         // Finder and Smoke may pass system arguments to the graphical app.
         if !command.to_string_lossy().starts_with('-') || command == "--help" {
+            // Keep the packaged office stopped until its backup finishes, including
+            // while a second launcher tries to start the supervisor.
+            let backup = command == "backup";
+            let _lease = if backup {
+                match headless::lease() {
+                    Ok(lease) => Some(lease),
+                    Err(error) => {
+                        eprintln!("Cannot back up this office. Stop its service first. {error}");
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                None
+            };
             let status = node_binary()
                 .zip(server_code(context.package_info()))
                 .and_then(|(node, code)| {
@@ -83,6 +97,7 @@ fn main() {
                         .arg(code.join("apps/office/scripts/office-cli.mjs"))
                         .args(std::env::args_os().skip(1))
                         .env("ODDBORO_EXECUTABLE", executable)
+                        .env("ODDBORO_BACKUP_LOCKED", if backup { "1" } else { "0" })
                         .status()
                         .ok()
                 });
