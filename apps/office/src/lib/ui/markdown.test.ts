@@ -419,3 +419,10 @@ test('a full path outside the office asks nothing when no Odd wrote the text, an
     []
   );
 });
+
+test('only known local music picks get a player action', () => {
+  const link = renderMarkdown('[Choose Focus noise](#office-track/focus-noise)').html;
+  assert.match(link, /data-track="focus-noise"/);
+  assert.doesNotMatch(link, /target="_blank"/);
+  assert.doesNotMatch(renderMarkdown('[Other](#office-track/unknown)').html, /data-track=/);
+});

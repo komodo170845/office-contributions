@@ -230,6 +230,17 @@ export function setSound(id: string): void {
   if (wasPlaying) play();
 }
 
+// Choosing an Odd's recommendation keeps pause and mute as the owner set them.
+export function chooseTrack(id: string): void {
+  if (soundById(id)) return setSound(id);
+  if (!TRACKS.some((t) => t.id === id) || music.current === id) return;
+  const wasPlaying = music.audio?.paused === false;
+  music.sound = undefined;
+  remember(SOUND, 'music');
+  load(id);
+  if (wasPlaying) play();
+}
+
 export function toggleRepeat(): void {
   music.repeat = !music.repeat;
   remember(REPEAT, music.repeat ? '1' : '0');

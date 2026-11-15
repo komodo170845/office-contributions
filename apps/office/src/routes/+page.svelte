@@ -1277,7 +1277,7 @@
           <Onboarding {stage} sample={data.sample} />
         {/if}
         <div class="mt-auto border-t border-hairline px-3 py-2">
-          <FloorControls bind:light onfit={fitFloor} onzoom={(d) => floor?.zoomBy(d)} />
+          <FloorControls {staff} bind:light onfit={fitFloor} onzoom={(d) => floor?.zoomBy(d)} />
         </div>
       </div>
     </SidePanel>
@@ -1404,7 +1404,7 @@
         <!-- The music keeps its place and size while Projects widens the panel. -->
         <div class="border-t border-hairline px-3 py-2">
           <div style="max-inline-size: {leftWidth - 24}px">
-            <FloorControls bind:light onfit={fitFloor} onzoom={(d) => floor?.zoomBy(d)} />
+            <FloorControls {staff} bind:light onfit={fitFloor} onzoom={(d) => floor?.zoomBy(d)} />
           </div>
         </div>
       </div>
@@ -1415,7 +1415,7 @@
     >
       {@render plate(false)}
       <div class="mt-2 border-t border-hairline pt-2">
-        <FloorControls bind:light onfit={fitFloor} onzoom={(d) => floor?.zoomBy(d)} />
+        <FloorControls {staff} bind:light onfit={fitFloor} onzoom={(d) => floor?.zoomBy(d)} />
       </div>
     </header>
   {/if}
