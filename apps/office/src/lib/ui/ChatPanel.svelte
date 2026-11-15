@@ -913,6 +913,17 @@
     box?.focus();
     box?.setSelectionRange(draft.indexOf(audience), draft.indexOf(audience) + audience.length);
   }
+  const advisers = $derived(staff.filter((s) => s.persona && !s.persona.quiet));
+  const council = 'Ask these New Altitude personas to review my brief:';
+  function askCouncil() {
+    const brief = draft.trim() ? draft : '[Describe the decision, the options and the limits.]';
+    draft = [
+      council + ' ' + advisers.map((s) => s.name).join(', ') + '.',
+      'Use one work thread. Send the brief below to one adviser at a time on that thread. Ask each for a recommendation, a reason and a source. If they disagree, ask each side about the disputed point once.',
+      'Put one report on my Desk when each adviser has answered or failed. Keep sources with their views. List anyone who could not answer and wait for me to request a retry. Leave the decision to me.',
+      brief
+    ].join('\n\n');
+  }
   const MORE: MoreItem[] = [
     { label: 'Attach files', shown: () => true, run: () => picker?.click() },
     {
@@ -925,6 +936,17 @@
         !draft.startsWith(rehearsal),
       focuses: true,
       run: rehearse
+    },
+    {
+      label: 'Ask a persona council',
+      shown: () =>
+        !!profile.manager &&
+        profile.tools.includes('hand_off') &&
+        advisers.length >= 2 &&
+        !replyTo &&
+        !saving &&
+        !draft.startsWith(council),
+      run: askCouncil
     },
     {
       label: 'Project sessions',
