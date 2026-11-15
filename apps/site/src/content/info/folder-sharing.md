@@ -19,6 +19,8 @@ For project instructions, meeting notes or an Obsidian vault, select the folder 
 
 For example, ask the Odd to follow the links in a closeout note, reconcile the figures and name the files it used. To ask about a terminal or build result, save the output in the project folder and point the Odd to that file. The Odd can read the saved output from disk.
 
+To plan staffing for a project, give its folder to the Office Manager and choose **Suggest a team**. Review the question and send it. The manager can match the work to Odds already in the office and put a proposed hire on your Desk. You choose whether to hire.
+
 ## Folders Oddboro never gives
 
 These folders would let an Odd past the limits you set for it, so Oddboro refuses them and offers no way around it:
