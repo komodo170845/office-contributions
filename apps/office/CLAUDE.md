@@ -293,8 +293,9 @@ pieces under 3,900 bytes a line, so no value is on a command line.
    completion condition at each stop. Each job is one ordinary thread led by
    the Office Manager. A review station can send work to an earlier station.
    Opening a job opens its usual thread, with the same asks, files and history.
-   Test run steps through the current editor draft in the browser using the
-   same station rules. The owner supplies each sample outcome.
+   Copy workflow opens the saved stations in a new draft. Saving it creates
+   a separate workflow. Test run steps through the current editor draft in the
+   browser using the same station rules. The owner supplies each sample outcome.
    An open goal lists its work, newest first, and keeps an ended one
    (`goalsWindow`), each row its title and one line on where it stands
    (`workLine` in `src/lib/ui/format.ts`): who has it, when its lead picks it

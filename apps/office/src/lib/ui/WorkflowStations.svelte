@@ -10,9 +10,10 @@
     version,
     onthread
   }: { staff: StaffProfile[]; version: number; onthread: (t: GoalThread) => void } = $props();
-  type Workflow = WorkflowBoard['workflows'][number];
+  type Draft = { id?: number; name: string; stations: Station[] };
+  const nameLimit = 80;
   let board = $state<WorkflowBoard>({ workflows: [], jobs: [] });
-  let draft = $state<{ id?: number; name: string; stations: Station[] }>();
+  let draft = $state<Draft>();
   let job = $state<{ workflow: number; title: string; requestId: string }>();
   let testing = $state(false);
   let sample = $state('');
@@ -36,7 +37,7 @@
   function blank(name = ''): Station {
     return { name, odd: '', doneWhen: '' };
   }
-  function edit(workflow?: Workflow) {
+  function edit(workflow?: Draft) {
     testing = false;
     sample = '';
     problem = '';
@@ -44,6 +45,13 @@
     draft = workflow
       ? { id: workflow.id, name: workflow.name, stations: workflow.stations.map((s) => ({ ...s })) }
       : { name: '', stations: [blank('Production'), blank('QA')] };
+  }
+  function copy(workflow: Draft) {
+    const name = `Copy of ${workflow.name}`
+      .slice(0, nameLimit)
+      .replace(/\p{Surrogate}$/u, '')
+      .trimEnd();
+    edit({ name, stations: workflow.stations });
   }
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -95,7 +103,12 @@
   {:else if draft}
     <form class="mt-2 grid gap-2 rounded-xl bg-raise p-3" onsubmit={submit}>
       <label class="text-xs text-muted"
-        >Workflow name<input class={field} required maxlength="80" bind:value={draft.name} /></label
+        >Workflow name<input
+          class={field}
+          required
+          maxlength={nameLimit}
+          bind:value={draft.name}
+        /></label
       >
       {#each draft.stations as station, i (i)}
         <fieldset class="grid gap-1.5 border-s-2 border-sea/40 ps-3">
@@ -156,12 +169,14 @@
     </form>
   {:else}
     {#each board.workflows as flow (flow.id)}
-      <div class="mt-2 rounded-xl bg-raise p-3">
-        <div class="flex items-center justify-between gap-2">
-          <strong class="text-sm">{flow.name}</strong><button
-            class="text-xs text-sea"
-            type="button"
-            onclick={() => edit(flow)}>Edit workflow</button
+      <div role="group" aria-label={flow.name} class="mt-2 rounded-xl bg-raise p-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <strong class="me-auto text-sm">{flow.name}</strong>
+          <button class="text-xs text-sea" type="button" onclick={() => edit(flow)}
+            >Edit workflow</button
+          >
+          <button class="text-xs text-sea" type="button" onclick={() => copy(flow)}
+            >Copy workflow</button
           >
         </div>
         <ol class="my-2 flex flex-wrap items-start gap-1">
