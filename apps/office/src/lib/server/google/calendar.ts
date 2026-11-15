@@ -1,7 +1,17 @@
 // The calendar for one connected Google account. Each reply keeps Google's
 // time zones, all-day dates and page tokens so an Odd can read the next page.
 import { z } from 'zod';
-import { accountServer, DATA_NOTE, google, id, run, send, untrusted, type Token } from './http.ts';
+import {
+  accountServer,
+  DATA_NOTE,
+  GoogleError,
+  google,
+  id,
+  run,
+  send,
+  untrusted,
+  type Token
+} from './http.ts';
 
 const API = 'https://www.googleapis.com/calendar/v3';
 const read = { readOnlyHint: true };
@@ -20,6 +30,24 @@ const eventFields =
 
 function checkPeriod(start: string, end: string) {
   if (Date.parse(end) <= Date.parse(start)) throw new Error('The end must be after the start.');
+}
+
+const eventTime = z.union([z.string().date(), when]);
+const eventTimes = {
+  start: eventTime.describe('Start date for an all-day event, or date and time with offset.'),
+  end: eventTime.describe('Exclusive end, in the same format as the start.')
+};
+const version = z.string().regex(/^"[^"\r\n]+"$/, 'Use the exact etag from get_event.');
+const changing = { calendar_id: calendar, event_id: id, etag: version };
+const write = { readOnlyHint: false };
+
+function dates(start: string, end: string) {
+  const allDay = start.length === 10;
+  if (allDay !== (end.length === 10)) throw new Error('Use two dates or two dates with times.');
+  checkPeriod(start, end);
+  return allDay
+    ? { start: { date: start }, end: { date: end } }
+    : { start: { dateTime: start }, end: { dateTime: end } };
 }
 
 export function calendarServer(token: Token, account?: string) {
@@ -103,6 +131,107 @@ export function calendarServer(token: Token, account?: string) {
           })
         )
       );
+    })
+  );
+  // PATCH only the requested fields. Google's etag keeps a delayed approval
+  // from replacing a change someone made after the Odd read the event.
+  const change = async (url: string, etag: string, fields: object) => {
+    const request = send('PATCH', fields);
+    const headers = new Headers(request.headers);
+    headers.set('If-Match', etag);
+    try {
+      return result(
+        await google(token, url + '?sendUpdates=all&fields=id,etag,htmlLink', {
+          ...request,
+          headers
+        })
+      );
+    } catch (e) {
+      if (e instanceof GoogleError && e.status === 412)
+        throw new Error(
+          'This event changed. Read it again and review the new details before retrying.'
+        );
+      throw e;
+    }
+  };
+
+  server.registerTool(
+    'create_event',
+    {
+      description:
+        'Create one event on the selected calendar. Google sends invitations to the listed guests. Pick an event ID once for this booking and keep it on every retry. If Google says it already exists, use get_event to check the saved booking.',
+      inputSchema: {
+        calendar_id: calendar,
+        event_id: z
+          .string()
+          .regex(
+            /^[0-9a-v]{5,1024}$/,
+            'Use a UUID without hyphens or another Google event ID in base32hex.'
+          ),
+        title: z.string().trim().min(1),
+        ...eventTimes,
+        guests: z.array(z.string().email()).optional()
+      },
+      annotations: write
+    },
+    run(async ({ calendar_id, event_id, title, start, end, guests }) =>
+      result(
+        await google(
+          token,
+          events(calendar_id) + '?sendUpdates=all&fields=id,etag,htmlLink',
+          send('POST', {
+            id: event_id,
+            summary: title,
+            ...dates(start, end),
+            ...(guests?.length ? { attendees: guests.map((email) => ({ email })) } : {})
+          })
+        )
+      )
+    )
+  );
+
+  server.registerTool(
+    'reschedule_event',
+    {
+      description:
+        'Change the start and end of one event. Use the event ID and etag you reviewed. For a recurring meeting, use the occurrence ID from list_events. Google notifies the guests.',
+      inputSchema: { ...changing, ...eventTimes },
+      annotations: write
+    },
+    run(async ({ calendar_id, event_id, etag, start, end }) => {
+      const url = events(calendar_id) + '/' + event_id;
+      const times = dates(start, end);
+      const current = await google<{ recurrence?: string[] }>(token, url + '?fields=recurrence');
+      if (current.recurrence?.length)
+        throw new Error('Choose one occurrence from list_events to reschedule it.');
+      return change(url, etag, times);
+    })
+  );
+
+  server.registerTool(
+    'answer_invitation',
+    {
+      description:
+        'Send the connected account’s response to a Google Calendar invitation. Use the event ID and etag you reviewed.',
+      inputSchema: { ...changing, response: z.enum(['accepted', 'declined', 'tentative']) },
+      annotations: write
+    },
+    run(async ({ calendar_id, event_id, etag, response }) => {
+      const url = events(calendar_id) + '/' + event_id;
+      const current = await google<{ attendees?: { self?: boolean; email?: string }[] }>(
+        token,
+        url + '?fields=attendees(self,email)'
+      );
+      const self = current.attendees?.find(
+        (person) =>
+          person.self && person.email && person.email.toLowerCase() === account?.toLowerCase()
+      );
+      if (!self)
+        throw new Error('Open the invitation on the calendar of the account that was invited.');
+      return change(url, etag, {
+        attendeesOmitted: true,
+        attendees: [{ email: self.email, responseStatus: response }]
+      });
     })
   );
   return server;
