@@ -46,3 +46,14 @@ export const soundById = (id: string | null | undefined): Track | undefined =>
   SOUNDS.find((sound) => sound.id === id);
 
 export const trackSrc = (id: string): string => `/${soundById(id) ? 'sounds' : 'audio'}/${id}.m4a`;
+
+/** The player and an Odd's recommendation use the same bundled tracks. */
+export const audioById = (id: string) => TRACKS.find((t) => t.id === id) ?? soundById(id);
+
+export function djRequest(loved: string[], passed: string[]): string {
+  const choices = [...TRACKS, ...SOUNDS].filter((t) => !passed.includes(t.id));
+  const catalog = choices
+    .map((t) => `${t.title} (#office-track/${t.id})${loved.includes(t.id) ? ' [favorite]' : ''}`)
+    .join('\n');
+  return `Pick music for what I'm working on. If you need to know the task or mood, ask me. Choose one of these tracks and tell me why. Include a Markdown link using its exact #office-track/ address so I can choose it in the player.\n\n${catalog}`;
+}

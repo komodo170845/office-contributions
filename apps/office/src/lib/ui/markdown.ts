@@ -2,6 +2,7 @@
 // turned into links the viewer opens. Plain TypeScript, so a test renders a
 // reply exactly as the page does (`Markdown.svelte` shows it).
 import MarkdownIt from 'markdown-it';
+import { audioById } from './tracks.ts';
 import type Token from 'markdown-it/lib/token.mjs';
 import { givenPath, shownPath, workName, workPath } from '@oddboro/ledger/work-paths';
 import { PAGE } from '#lib/pages.ts';
@@ -18,7 +19,7 @@ const defaultLink =
   md.renderer.rules.link_open ??
   ((tokens, i, options, _env, self) => self.renderToken(tokens, i, options));
 md.renderer.rules.link_open = (tokens, i, options, env, self) => {
-  if (!tokens[i].attrGet('data-file')) {
+  if (!tokens[i].attrGet('data-file') && !tokens[i].attrGet('data-track')) {
     tokens[i].attrSet('target', '_blank');
     tokens[i].attrSet('rel', 'noopener noreferrer');
   }
@@ -180,6 +181,9 @@ md.core.ruler.push('staff_files', (state) => {
       if (t.type === 'link_open') {
         inLink++;
         const href = t.attrGet('href') ?? '';
+        const track =
+          href.startsWith('#office-track/') && audioById(href.slice('#office-track/'.length));
+        if (track) t.attrSet('data-track', track.id);
         const name = fileOf(href, env);
         const f = name && opened(name, env);
         if (f) {

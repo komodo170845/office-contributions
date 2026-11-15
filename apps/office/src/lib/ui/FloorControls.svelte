@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { SOUNDS } from './tracks.ts';
+  import { SOUNDS, djRequest } from './tracks.ts';
+  import { chatAbout } from './chat-about.svelte.ts';
+  import type { StaffProfile } from '#lib/staff/roster.ts';
   import {
     back,
     music,
@@ -24,8 +26,13 @@
   // shows the whole office in the room the panels leave, and the minus and plus
   // step a level out or in.
   export type Light = 'auto' | 'day' | 'night';
-  type Props = { light: Light; onfit: () => void; onzoom: (dir: 1 | -1) => void };
-  let { light = $bindable(), onfit, onzoom }: Props = $props();
+  type Props = {
+    staff: StaffProfile[];
+    light: Light;
+    onfit: () => void;
+    onzoom: (dir: 1 | -1) => void;
+  };
+  let { staff, light = $bindable(), onfit, onzoom }: Props = $props();
 
   const LIGHTS: { id: Light; label: string }[] = [
     { id: 'auto', label: 'Light follows the office clock' },
@@ -98,6 +105,22 @@
           <option value={sound.id}>{sound.title}</option>
         {/each}
       </select>
+      {#if staff.length}
+        <select
+          class="min-w-0 rounded bg-raise px-1 text-xs text-ink"
+          aria-label="Ask an Odd to pick music"
+          onchange={(e) => {
+            const id = e.currentTarget.value;
+            e.currentTarget.value = '';
+            if (id) chatAbout(id, djRequest(music.loved, music.passed));
+          }}
+        >
+          <option value="">Ask a DJ</option>
+          {#each staff as odd (odd.id)}
+            <option value={odd.id}>{odd.name}</option>
+          {/each}
+        </select>
+      {/if}
       {#if title && !music.sound}
         <span class="truncate font-semibold text-ink">{title}</span>
       {/if}

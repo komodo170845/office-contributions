@@ -8,6 +8,7 @@
 </script>
 
 <script lang="ts">
+  import { chooseTrack } from './music.svelte.ts';
   import { askAbout } from './file-links.ts';
   import { openInBrowser } from './viewer.ts';
   import { openFile, type FileRef } from './windows.svelte.ts';
@@ -33,6 +34,12 @@
             page.textContent = err instanceof Error ? err.message : String(err);
           })
           .finally(() => (page.disabled = false));
+        return;
+      }
+      const track = target.closest('a[data-track]')?.getAttribute('data-track');
+      if (track) {
+        e.preventDefault();
+        chooseTrack(track);
         return;
       }
       const a = target.closest('a[data-file]');
