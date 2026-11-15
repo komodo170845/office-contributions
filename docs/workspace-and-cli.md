@@ -52,3 +52,5 @@ Run `oddboro odds` to find an Odd's ID. Run `oddboro share ID` and enter your of
 - `--work` shares the titles of this Odd's current assignments.
 
 The terminal shows the snapshot. Ask your tool to read it with `office_context`. Ctrl+C closes the session. Restart sharing to refresh the snapshot. Material the tool already received stays in its conversation. For concurrent sessions, set a different `ODDBORO_TOOL_PORT` in each pair of processes. The default is 4512 on this computer.
+
+To receive work, add `--review` to `oddboro share ID` in your own terminal. Your coding tool can use `offer_work` with a request ID, a message and selected text files. The terminal shows the destination, message, filenames and complete text before it asks you to send or decline. Sending also lets that tool read the Odd's reply. The office sends the selection through the Odd's ordinary chat, with its existing permissions. The coding tool can check `work_result` with the same request ID while the sharing session is open. Stop sharing to disconnect. Your office keeps accepted work in the Odd's chat.

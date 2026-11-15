@@ -22,7 +22,7 @@ odds | inbox | assign ODD MESSAGE [--turn UUID] | chat ODD | follow ODD
 steer ODD RUN MESSAGE | stop-run ODD RUN | report ID | file ODD PATH
 inspect ID | approve ID | decline ID [REASON]
 advanced on|off | projects | project ACTION JSON | terminal SESSION
-share ODD [--goals] [--lessons] [--work] | mcp | tool-key
+share ODD [--goals] [--lessons] [--work] [--review] | mcp | tool-key
 request METHOD /api/PATH [JSON]   access a specific office operation`;
 
 function required(i, name) {
@@ -165,7 +165,15 @@ async function run() {
   }
   if (command === 'share') {
     const { shareOdd } = await import('./share-odd.mjs');
-    return shareOdd(required(0, 'an Odd ID'), args.slice(1), json);
+    const id = required(0, 'an Odd ID');
+    return shareOdd(id, args.slice(1), json, async (turn) => {
+      const stream = await response('POST', '/api/staff/' + encodeURIComponent(id) + '/chat', turn);
+      for await (const [, event] of events(stream)) {
+        if (event.type === 'error') throw Error(event.message);
+        if (event.type === 'done') return event.text;
+      }
+      throw Error('The reply was interrupted. Open the Odd’s chat.');
+    });
   }
   if (command === 'login') {
     const p = await import('@oddboro/ledger/platform');

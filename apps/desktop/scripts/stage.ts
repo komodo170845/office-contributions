@@ -281,6 +281,7 @@ function stageOffice(): void {
     'office-cli.mjs',
     'service-channel.mjs',
     'coding-tool.mjs',
+    'coding-handoffs.mjs',
     'share-odd.mjs'
   ])
     cpSync(join(ROOT, 'apps', 'office', 'scripts', file), join(scripts, file));

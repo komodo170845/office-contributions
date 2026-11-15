@@ -5,7 +5,7 @@ on:
     paths:
       - 'apps/office/scripts/service-*.mjs'
       - 'apps/office/scripts/office-cli.mjs'
-      - 'apps/office/scripts/coding-tool.mjs'
+      - 'apps/office/scripts/coding-*.mjs'
       - 'apps/office/scripts/share-odd*.mjs'
       - 'apps/office/src/routes/workspace/**'
       - 'apps/desktop/scripts/check-office-modes.mjs'
