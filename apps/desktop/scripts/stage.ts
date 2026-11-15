@@ -279,7 +279,9 @@ function stageOffice(): void {
     'service-identity.mjs',
     'service-entry.mjs',
     'office-cli.mjs',
-    'service-channel.mjs'
+    'service-channel.mjs',
+    'coding-tool.mjs',
+    'share-odd.mjs'
   ])
     cpSync(join(ROOT, 'apps', 'office', 'scripts', file), join(scripts, file));
   cpSync(join(ROOT, 'apps', 'office', 'build'), join(office, 'build'), { recursive: true });

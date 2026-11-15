@@ -38,3 +38,17 @@ For native sessions, use `advanced on --accept-project-access`, then `projects`.
 The packaged service uses the same database upgrade and backup path as the desktop office. The service checks the release manifest, verifies the signed version and download, and waits for the office's update window. It restarts headlessly when an update is ready. An installation that requires administrator access reports the issue in the office log; use the signed platform installer in that case. On Mac and Linux, the service retains the previous installation until the new version answers. Confirm the version with `status`. After an interrupted upgrade, inspect the office log before retrying work.
 
 The Mac log is in `~/Library/Logs/Oddboro/office.log`, the Linux log in `~/.local/state/oddboro/office.log` (or the XDG state directory), and the Windows log in `%LOCALAPPDATA%\Oddboro\Logs\office.log`. To remove the background installation, turn off its login entry, stop the office, and uninstall the app normally. Keep the office home if you want to keep its history.
+
+## Share context with a coding tool
+
+Run `oddboro tool-key` in your terminal. Keep the generated key in your password manager. Set it as `ODDBORO_TOOL_KEY` for the coding tool's MCP process and for the terminal where you share an Odd. Use a separate key for each coding tool. Your office pairing code belongs only in the office prompt.
+
+Add a standard-input MCP server in the tool's user settings once. Set the command to the full path of your Oddboro executable and the argument to `mcp`. For Codex, include `ODDBORO_TOOL_KEY` in that server's `env_vars`. In Claude Code, use a user-scoped server and provide the same variable in its environment.
+
+Run `oddboro odds` to find an Odd's ID. Run `oddboro share ID` and enter your office pairing code. The tool can now read that Odd's name and role. Add any of these options when starting the command:
+
+- `--goals` shares the titles of active office goals.
+- `--lessons` shares the text of confirmed lessons for every Odd.
+- `--work` shares the titles of this Odd's current assignments.
+
+The terminal shows the snapshot. Ask your tool to read it with `office_context`. Ctrl+C closes the session. Restart sharing to refresh the snapshot. Material the tool already received stays in its conversation. For concurrent sessions, set a different `ODDBORO_TOOL_PORT` in each pair of processes. The default is 4512 on this computer.
