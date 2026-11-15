@@ -2,6 +2,7 @@
 // returns to the lead, and the office's normal work thread owns the status.
 import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db.ts';
+import { assignmentProblem, nextStation } from './station-route.ts';
 import { manager } from './goals.ts';
 import type { FollowUpRow } from './office-follow-ups.ts';
 import { goalThreads, type Tx, type Db } from './threads.ts';
@@ -30,12 +31,8 @@ async function workflowLead(q: Db, stages: Station[]) {
   if (!lead) throw new StationProblem('Hire an Office Manager to lead the hand-offs.');
   const roster = await q.select({ id: staff.id }).from(staff).where(isNull(staff.leftAt));
   for (const stage of stages) {
-    if (!roster.some((s) => s.id === stage.odd))
-      throw new StationProblem(`Choose a current Odd for ${stage.name}.`);
-    if (stage.odd === lead.id)
-      throw new StationProblem(
-        'The Office Manager leads the hand-offs. Choose a colleague for each station.'
-      );
+    const problem = assignmentProblem(stage, roster, lead.id);
+    if (problem) throw new StationProblem(problem);
   }
   return lead;
 }
@@ -217,23 +214,9 @@ export async function continueStations(f: FollowUpRow): Promise<Return | undefin
           (lastResult !== null && returned.id <= lastResult)
         )
           return { outcome: 'done', text: 'This station has already handed its work on.' } as const;
-        const station = job.stations[job.station];
-        if (returned.answered && returned.outcome === 'done') target = job.station;
-        else if (
-          !returned.answered &&
-          returned.outcome === 'failed' &&
-          station.reviseTo !== undefined &&
-          /^Revision needed\s*$/im.test(f.note ?? '')
-        )
-          target = station.reviseTo;
-        else if (returned.outcome !== 'done')
-          return {
-            outcome: returned.outcome ?? 'failed',
-            text: f.note || 'The station did not meet its completion condition.'
-          };
-        else if (job.station + 1 === job.stations.length)
-          return { outcome: 'done', text: f.note || 'The last station finished.' } as const;
-        else target = job.station + 1;
+        const step = nextStation(job.stations, job.station, returned, f.note);
+        if (!('next' in step)) return step;
+        target = step.next;
         from = job.station;
         lastResult = f.id;
       }

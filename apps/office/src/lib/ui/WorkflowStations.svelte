@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { GoalThread, Station, WorkflowBoard } from '@oddboro/ledger';
   import type { StaffProfile } from '../staff/roster.ts';
+  import StationTestRun from './StationTestRun.svelte';
   import { call } from './api.ts';
   import { workLine } from './format.ts';
 
@@ -13,6 +14,8 @@
   let board = $state<WorkflowBoard>({ workflows: [], jobs: [] });
   let draft = $state<{ id?: number; name: string; stations: Station[] }>();
   let job = $state<{ workflow: number; title: string; requestId: string }>();
+  let testing = $state(false);
+  let sample = $state('');
   let busy = $state(false);
   let problem = $state('');
   let read = 0;
@@ -34,6 +37,8 @@
     return { name, odd: '', doneWhen: '' };
   }
   function edit(workflow?: Workflow) {
+    testing = false;
+    sample = '';
     problem = '';
     job = undefined;
     draft = workflow
@@ -79,7 +84,15 @@
       Hire an Office Manager and a colleague to run stations.
     </p>{/if}
   {#if problem}<p role="alert" class="my-1 text-xs text-coral">{problem}</p>{/if}
-  {#if draft}
+  {#if draft && testing}
+    <StationTestRun
+      stations={draft.stations}
+      {staff}
+      lead={manager?.id ?? ''}
+      bind:sample
+      onclose={() => (testing = false)}
+    />
+  {:else if draft}
     <form class="mt-2 grid gap-2 rounded-xl bg-raise p-3" onsubmit={submit}>
       <label class="text-xs text-muted"
         >Workflow name<input class={field} required maxlength="80" bind:value={draft.name} /></label
@@ -130,6 +143,12 @@
       </div>
       <div class="flex items-center gap-3">
         <button class={action} disabled={busy}>Save workflow</button>
+        <button
+          type="button"
+          class="text-xs text-sea"
+          disabled={busy}
+          onclick={() => (testing = true)}>Test run</button
+        >
         <button class="text-xs" type="button" disabled={busy} onclick={() => (draft = undefined)}
           >Cancel</button
         >
