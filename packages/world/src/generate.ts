@@ -2163,7 +2163,17 @@ export function checkWorld(world: World, staff = 0): string[] {
           enter: s.approach
         }))
   );
-  for (const s of unreached.slice(0, 5)) out.push(`nobody can reach ${s.prop} in ${s.room}`);
+  const blocked = unreached.slice(0, 5);
+  for (const id of new Set(blocked.map((s) => s.room))) {
+    const room = world.rooms.find((r) => r.id === id);
+    const pieces = new Set(
+      blocked.filter((s) => s.room === id).map((s) => `the ${pieceWords(s.prop)}`)
+    );
+    const from = room && !room.outdoor ? ' from the doorway' : '';
+    out.push(
+      `In ${room?.name ?? id}, clear a path${from} to ${new Intl.ListFormat('en').format(pieces)}.`
+    );
+  }
   const seats = world.spots.filter((s) => ['work', 'intake', 'read'].includes(s.activity)).length;
   if (seats < staff) out.push(`${seats} work seats is fewer than the ${staff} Odds`);
   return out;

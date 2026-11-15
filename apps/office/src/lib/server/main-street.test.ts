@@ -26,3 +26,13 @@ test('adding a station keeps the hand-built floor and custom room names in an ed
   spec.rooms[0].floor = 'tile';
   assert.equal(buildMainStreet(spec, catalog, 3).templates['owner-office'].floor, 'tile');
 });
+
+test('a table across the only entrance names the blocked path in the renamed room', () => {
+  const spec = mainStreetSpec({ 'library#7': 'Map Room' });
+  const library = spec.rooms.find((r) => r.starterRoom === 'library');
+  assert.ok(library);
+  library.edits = [{ add: 'library-table', at: [7, 9] }];
+  const { problems } = buildMainStreet(spec, spriteCatalog(), 1);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /^In Map Room, clear a path from the doorway to the window seat/);
+});
