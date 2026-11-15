@@ -1250,7 +1250,7 @@
 
   <audio
     bind:this={music.audio}
-    loop={music.focus}
+    loop={!!music.sound}
     preload="auto"
     onplay={() => (music.playing = true)}
     onpause={() => (music.playing = false)}

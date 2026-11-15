@@ -6,11 +6,11 @@
 // After that the music plays on each visit if the owner left it on. A browser
 // keeps a page quiet until the visitor clicks or types, so a play the browser
 // refuses waits for that. Every choice here is remembered per viewer.
-import { FOCUS, OPENING, TRACKS, trackSrc } from './tracks.ts';
+import { OPENING, TRACKS, soundById, trackSrc, type Track } from './tracks.ts';
 
 const ON = 'oddboro.music';
 const VOLUME = 'oddboro.volume';
-const FOCUS_ON = 'oddboro.music.focus';
+const SOUND = 'oddboro.music.sound';
 const REPEAT = 'oddboro.music.repeat';
 const LOVED = 'oddboro.music.loved';
 const PASSED = 'oddboro.music.passed';
@@ -30,7 +30,7 @@ export const music = $state<{
   volume: number;
   /** Play the current track again when it ends. */
   repeat: boolean;
-  focus: boolean;
+  sound?: Track;
   loved: string[];
   passed: string[];
 }>({
@@ -39,7 +39,6 @@ export const music = $state<{
   duration: 0,
   volume: 0.6,
   repeat: false,
-  focus: false,
   loved: [],
   passed: []
 });
@@ -70,7 +69,9 @@ try {
   const v = Number(localStorage.getItem(VOLUME));
   if (localStorage.getItem(VOLUME) !== null && v >= 0 && v <= 1) music.volume = v;
   if (music.volume > 0) lastVolume = music.volume;
-  music.focus = localStorage.getItem(FOCUS_ON) === '1';
+  const saved = localStorage.getItem(SOUND);
+  const usedFocus = localStorage.getItem('oddboro.music.focus') === '1';
+  music.sound = soundById(saved ?? (usedFocus ? 'focus-noise' : null));
   music.repeat = localStorage.getItem(REPEAT) === '1';
   music.loved = ids(localStorage.getItem(LOVED));
   music.passed = ids(localStorage.getItem(PASSED));
@@ -92,11 +93,11 @@ function choose(on: boolean): void {
 }
 
 export const titleOf = (id: string | undefined): string | undefined =>
-  id === FOCUS ? 'Focus noise' : TRACKS.find((t) => t.id === id)?.title;
+  soundById(id)?.title ?? TRACKS.find((t) => t.id === id)?.title;
 
 /** The next track: random, weighted to the loved, skipping the passed and the last few played. */
 function pick(): string {
-  if (music.focus) return FOCUS;
+  if (music.sound) return music.sound.id;
   let pool = TRACKS.map((t) => t.id).filter((id) => !music.passed.includes(id));
   if (!pool.length) pool = TRACKS.map((t) => t.id);
   const recent = new Set([...history, music.current].slice(-Math.min(5, pool.length - 1)));
@@ -119,7 +120,8 @@ function show(id: string, a: HTMLAudioElement): void {
 function load(id: string): void {
   const a = music.audio;
   if (!a) return;
-  if (music.current && music.current !== id && music.current !== FOCUS) history.push(music.current);
+  if (music.current && music.current !== id && !soundById(music.current))
+    history.push(music.current);
   if (history.length > 50) history.shift();
   show(id, a);
 }
@@ -172,7 +174,7 @@ export function startMusic(firstRun: boolean): void {
   mediaKeys();
   hushWhileHidden();
   if (choice === 'off' || (!firstRun && choice !== 'on')) return;
-  load(firstRun && !music.focus && !music.passed.includes(OPENING) ? OPENING : pick());
+  load(firstRun && !music.sound && !music.passed.includes(OPENING) ? OPENING : pick());
   play();
   const first = () => {
     if (!music.playing && choice !== 'off') play();
@@ -195,7 +197,7 @@ export function togglePlay(): void {
 
 /** A new random track, playing. */
 export function next(): void {
-  if (music.focus) return;
+  if (music.sound) return;
   load(pick());
   choose(true);
   play();
@@ -203,7 +205,7 @@ export function next(): void {
 
 /** The start of this track, or the one before it if this one only just began. */
 export function back(): void {
-  if (music.focus) return;
+  if (music.sound) return;
   const a = music.audio;
   if (!a) return;
   const before = history.pop();
@@ -218,12 +220,13 @@ export function back(): void {
 }
 
 /** Keep the owner's play or pause choice when changing the sound. */
-export function setFocus(focus: boolean): void {
-  if (focus === music.focus) return;
+export function setSound(id: string): void {
+  const sound = soundById(id);
+  if (sound?.id === music.sound?.id) return;
   const wasPlaying = music.audio?.paused === false;
-  music.focus = focus;
-  remember(FOCUS_ON, focus ? '1' : '0');
-  load(focus ? FOCUS : (history.pop() ?? pick()));
+  music.sound = sound;
+  remember(SOUND, sound?.id ?? 'music');
+  load(sound?.id ?? history.pop() ?? pick());
   if (wasPlaying) play();
 }
 
