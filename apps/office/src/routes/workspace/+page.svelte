@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, setContext, untrack } from 'svelte';
   import type { PageData } from './$types';
-  import type { AskRow } from '@oddboro/ledger';
+  import type { AskRow, GoalThread } from '@oddboro/ledger';
   import type { OfficeEvent } from '#lib/server/events.ts';
   import ChatPanel from '#lib/ui/ChatPanel.svelte';
   import DeskDrawer from '#lib/ui/DeskDrawer.svelte';
+  import GoalsPanel from '#lib/ui/GoalsPanel.svelte';
   import ProjectSessions from '#lib/ui/ProjectSessions.svelte';
   import ReportView from '#lib/ui/ReportView.svelte';
   import FileViewer from '#lib/ui/FileViewer.svelte';
@@ -59,6 +60,14 @@
       openReport({ id: d.id, staff: id, title: d.title });
       tab = 'panel';
     } else desk(d.kind + '-' + d.id);
+  }
+  function openThread(thread: GoalThread) {
+    const waiting = thread.waiting[0];
+    if (waiting) {
+      const rows = waiting.kind === 'ask' ? office.desk.asks : office.desk.tasks;
+      if (rows.some((row) => row.id === waiting.id)) return desk(waiting.kind + '-' + waiting.id);
+    }
+    pick(thread.hubId);
   }
   function hires(rows: AskRow[]) {
     hireFrom = rows;
@@ -229,6 +238,7 @@
         <button class:chosen={tab === 'inbox'} onclick={() => view('inbox')}
           >Inbox <small>{count}</small></button
         >
+        <button class:chosen={tab === 'goals'} onclick={() => view('goals')}>Goals</button>
         {#if advanced.on}<button
             onclick={() => {
               openProject();
@@ -278,6 +288,8 @@
                 >{w.label}<small>{office.staff.find((p) => p.id === id)?.name}</small></button
               >{/each}{/each}
           {#if !Object.keys(office.working).length}<p>No active jobs.</p>{/if}
+        {:else if tab === 'goals'}
+          <GoalsPanel staff={office.staff} {version} onthread={openThread} />
         {:else if tab === 'settings'}<h1>Settings</h1>
           <WorkspaceSettings />
         {:else if tab === 'hire'}<h1>Hire an Odd</h1>

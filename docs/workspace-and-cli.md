@@ -2,7 +2,7 @@
 
 On a fresh office, choose **Office** for the floor or **Workspace** for a list of Odds, conversations, decisions, and results. Existing offices open on the floor unless you have chosen Workspace. **Open Office** and **Workspace** switch views. Each browser remembers its choice. Both views use the same running office.
 
-In Workspace, **Needs you** shows open decisions. Choose a row to read the request and answer it. Choose an Odd to read its chat, send an assignment or steer an active reply. Use Alt+Down and Alt+Up to switch. Turn on Advanced in Settings to include native Codex and Claude project sessions. Select a session to inspect it; explicitly take terminal control to type. Closing a window or a terminal leaves the office running. **Stop office** ends the service, including running work.
+In Workspace, **Needs you** shows open decisions. Choose a row to read the request and answer it. Open **Goals** to see who owns each part, assign an Odd to a goal, or open a work thread. Choose an Odd to read its chat, send an assignment or steer an active reply. Use Alt+Down and Alt+Up to switch. Turn on Advanced in Settings to include native Codex and Claude project sessions. Select a session to inspect it; explicitly take terminal control to type. Closing a window or a terminal leaves the office running. **Stop office** ends the service, including running work.
 
 ## Pair a client with your office
 
