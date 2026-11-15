@@ -22,6 +22,7 @@ odds | inbox | assign ODD MESSAGE [--turn UUID] | chat ODD | follow ODD
 steer ODD RUN MESSAGE | stop-run ODD RUN | report ID | file ODD PATH
 inspect ID | approve ID | decline ID [REASON]
 advanced on|off | projects | project ACTION JSON | terminal SESSION
+share ODD [--goals] [--lessons] [--work] | mcp | tool-key
 request METHOD /api/PATH [JSON]   access a specific office operation`;
 
 function required(i, name) {
@@ -154,6 +155,18 @@ async function terminal(id) {
 }
 async function run() {
   if (!command || ['help', '--help', '-h'].includes(command)) return out(help);
+  if (command === 'tool-key') {
+    const { randomBytes } = await import('node:crypto');
+    return out(randomBytes(32).toString('hex'));
+  }
+  if (command === 'mcp') {
+    const { codingTool } = await import('./coding-tool.mjs');
+    return codingTool();
+  }
+  if (command === 'share') {
+    const { shareOdd } = await import('./share-odd.mjs');
+    return shareOdd(required(0, 'an Odd ID'), args.slice(1), json);
+  }
   if (command === 'login') {
     const p = await import('@oddboro/ledger/platform');
     const label = 'com.oddboro.office';
