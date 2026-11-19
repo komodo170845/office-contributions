@@ -17,6 +17,8 @@ The change takes effect on the Odd's next run. Click ✕ beside a folder to take
 
 To ask about files in a folder you gave, choose **Use in chat** under the folder's name. Oddboro puts the folder's path in the message box. Add your question and send it.
 
+To plan staffing for a project, give its folder to the Office Manager and choose **Suggest a team**. Review the question and send it. The manager can match the work to Odds already in the office and put a proposed hire on your Desk. You choose whether to hire.
+
 ## Folders Oddboro never gives
 
 These folders would let an Odd past the limits you set for it, so Oddboro refuses them and offers no way around it:

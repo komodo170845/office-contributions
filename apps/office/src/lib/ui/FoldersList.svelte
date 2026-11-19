@@ -117,6 +117,15 @@
     }
   }
 
+  function suggestTeam(folder: string) {
+    chatAbout(
+      profile.id,
+      `Review the project in this folder and suggest a team for it.\n${folder}\n\n` +
+        'Name the files behind each recommendation. Check the current roster and say which work ' +
+        'an existing Odd can take. If a role is missing, put a hire proposal on my Desk for review.'
+    );
+  }
+
   async function add() {
     if (await grant(typed.trim())) {
       typed = '';
@@ -161,6 +170,13 @@
                   chatAbout(profile.id, `Use the relevant files in this folder.\n${f.path}\n\n`)}
                 >Use in chat</button
               >
+              {#if profile.manager}
+                <button
+                  class="ms-2 text-[11px] text-sea underline"
+                  aria-label={`Suggest a team for ${f.shown}`}
+                  onclick={() => suggestTeam(f.path)}>Suggest a team</button
+                >
+              {/if}
             {/if}
           </span>
           <span
